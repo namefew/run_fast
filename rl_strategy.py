@@ -314,13 +314,12 @@ def train_dqn_agent(episodes: int = 1000):
         state = env.reset()
         total_reward = 0
         steps = 0
-        
+        print(f"第 {episode+1}/{episodes} 开始 ...")
+        print(f"玩家0 - {env.engine.state.players[0]}")
+        print(f"玩家1 - {env.engine.state.players[1]}")
         # 添加调试计数器，防止无限循环
-        max_steps_per_episode = 1000  # 设置合理的最大步数
+        max_steps_per_episode = 50  # 设置合理的最大步数
         step_count = 0
-        
-        # 用于详细调试的信息
-        debug_info = []
         
         while not env.done and step_count < max_steps_per_episode:
             current_player = env.engine.state.current_player
@@ -336,7 +335,6 @@ def train_dqn_agent(episodes: int = 1000):
                     step_count += 1
                     total_reward += reward
                     state = next_state
-                    debug_info.append(f"玩家0跳过，无有效动作")
                     continue
                 
                 # 使用epsilon-贪婪策略选择动作
@@ -375,27 +373,13 @@ def train_dqn_agent(episodes: int = 1000):
                 steps += 1
                 step_count += 1
                 
-                debug_info.append(f"玩家0执行动作: {action}, 奖励: {reward:.2f}, 手牌数: {len(env.engine.state.players[0])}")
-                
             else:  # HumanStrategy玩家 (1号玩家)
                 # 使用HumanStrategy选择动作
-                try:
-                    action_type, cards = human_strategy.choose_action(env.engine)
-                except Exception as e:
-                    print(f"玩家1选择动作时出错: {e}")
-                    # 出错时默认跳过
-                    next_state, reward, done, info = env.step(0)
-                    state = next_state
-                    steps += 1
-                    step_count += 1
-                    debug_info.append(f"玩家1出错跳过")
-                    continue
-                
+                action_type, cards = human_strategy.choose_action(env.engine)
                 # 将动作转换为环境可以理解的格式
                 if action_type == "pass":
                     # 执行跳过动作
                     next_state, reward, done, info = env.step(0)  # 跳过通常对应动作0
-                    debug_info.append(f"玩家1跳过")
                 else:
                     # 找到对应的牌型动作索引
                     valid_patterns = env.engine.get_valid_patterns(current_player)
@@ -407,43 +391,41 @@ def train_dqn_agent(episodes: int = 1000):
                             action = i
                             found = True
                             break
-                    
-                    # 如果没找到匹配的动作，使用启发式方法选择一个动作
-                    if not found and len(valid_patterns) > 0:
-                        # 使用HumanStrategy的启发式方法选择一个动作
-                        scorer = CardGroupScorer()
-                        opponent_id = 1 - current_player
-                        opponent_hand_size = len(env.engine.state.players[opponent_id])
-                        player_hand = env.engine.state.players[current_player]
-                        
-                        # 为每个有效牌型评分
-                        scores_list = []
-                        for pattern in valid_patterns:
-                            try:
-                                score = scorer.score_pattern(pattern, opponent_hand_size, remaining_hand=player_hand)
-                                scores_list.append(score)
-                            except Exception as e:
-                                print(f"评分牌型时出错 {pattern}: {e}")
-                                scores_list.append(0)  # 出错时给0分
-                        
-                        # 选择评分最高的牌型
-                        if scores_list:
-                            best_idx = np.argmax(scores_list)
-                            action = best_idx
-                        else:
-                            action = 0
-                    elif not found:
-                        # 没有有效动作，只能跳过
-                        next_state, reward, done, info = env.step(0)
-                        state = next_state
-                        steps += 1
-                        step_count += 1
-                        debug_info.append(f"玩家1跳过，无有效动作")
-                        continue
-                    
+
+                    # # 如果没找到匹配的动作，使用启发式方法选择一个动作
+                    # if not found and len(valid_patterns) > 0:
+                    #     # 使用HumanStrategy的启发式方法选择一个动作
+                    #     scorer = CardGroupScorer()
+                    #     opponent_id = 1 - current_player
+                    #     opponent_hand_size = len(env.engine.state.players[opponent_id])
+                    #     player_hand = env.engine.state.players[current_player]
+                    #
+                    #     # 为每个有效牌型评分
+                    #     scores_list = []
+                    #     for pattern in valid_patterns:
+                    #         try:
+                    #             score = scorer.score_pattern(pattern, opponent_hand_size, remaining_hand=player_hand)
+                    #             scores_list.append(score)
+                    #         except Exception as e:
+                    #             print(f"评分牌型时出错 {pattern}: {e}")
+                    #             scores_list.append(0)  # 出错时给0分
+                    #
+                    #     # 选择评分最高的牌型
+                    #     if scores_list:
+                    #         best_idx = np.argmax(scores_list)
+                    #         action = best_idx
+                    #     else:
+                    #         action = 0
+                    # elif not found:
+                    #     # 没有有效动作，只能跳过
+                    #     next_state, reward, done, info = env.step(0)
+                    #     state = next_state
+                    #     steps += 1
+                    #     step_count += 1
+                    #     continue
+                    #
                     # 执行动作
                     next_state, reward, done, info = env.step(action)
-                    debug_info.append(f"玩家1执行动作: {action}, 出牌: {[str(card) for card in cards]}, 奖励: {reward:.2f}, 手牌数: {len(env.engine.state.players[1])}")
                 
                 state = next_state
                 steps += 1
@@ -464,9 +446,6 @@ def train_dqn_agent(episodes: int = 1000):
             print(f"  跳过次数: {env.engine.state.pass_count}")
             print(f"  玩家0手牌: {sorted(env.engine.state.players[0])}")
             print(f"  玩家1手牌: {sorted(env.engine.state.players[1])}")
-            print(f"  最后几步动作:")
-            for info in debug_info[-20:]:  # 打印最后20步动作
-                print(f"    {info}")
         
         scores.append(total_reward)
         

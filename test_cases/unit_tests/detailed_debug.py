@@ -23,7 +23,7 @@ def test_detailed_issue():
     
     # 测试生成所有牌型
     all_patterns = []
-    engine._generate_all_patterns(engine.state.players[0], all_patterns)
+    engine.generate_all_patterns(engine.state.players[0], all_patterns)
     print(f"生成的牌型数量: {len(all_patterns)}")
     
     # 测试分组

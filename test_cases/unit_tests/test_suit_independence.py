@@ -35,8 +35,8 @@ def test_suit_independence():
     # 生成两组牌的牌型
     patterns1 = []
     patterns2 = []
-    engine._generate_all_patterns(hand1, patterns1)
-    engine._generate_all_patterns(hand2, patterns2)
+    engine.generate_all_patterns(hand1, patterns1)
+    engine.generate_all_patterns(hand2, patterns2)
     
     # 检查是否都能生成顺子
     straight1 = any(p.type == CardType.STRAIGHT for p in patterns1)
@@ -60,7 +60,7 @@ def test_suit_independence():
     
     engine.state.players[0] = hand3
     all_patterns = []
-    engine._generate_all_patterns(hand3, all_patterns)
+    engine.generate_all_patterns(hand3, all_patterns)
     groups = engine.group_patterns_into_hands(hand3, all_patterns)
     
     print("测试用例2: 忽略花色进行分组")
@@ -96,7 +96,7 @@ def test_suit_independence():
     
     engine.state.players[0] = problematic_hand
     all_patterns = []
-    engine._generate_all_patterns(problematic_hand, all_patterns)
+    engine.generate_all_patterns(problematic_hand, all_patterns)
     groups = engine.group_patterns_into_hands(problematic_hand, all_patterns)
     
     print(f"  手牌: {[str(card) for card in problematic_hand]}")

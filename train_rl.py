@@ -7,7 +7,6 @@ import torch
 import numpy as np
 from rl_strategy import train_dqn_agent
 from rl_environment import RLEnvironment
-from human_strategy import HumanStrategy  # 添加导入
 
 
 def train_dqn(episodes=1000, save_path="models/dqn_model.pth"):
@@ -36,7 +35,6 @@ def evaluate_agent(agent, episodes=100):
     for episode in range(episodes):
         state = env.reset()
         total_reward = 0
-        
         while not env.done:
             # 选择动作
             valid_actions = env.get_valid_actions()

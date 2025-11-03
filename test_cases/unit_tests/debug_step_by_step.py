@@ -23,7 +23,7 @@ def test_detailed_issue():
     
     # 测试生成所有牌型
     all_patterns = []
-    engine._generate_all_patterns(engine.state.players[0], all_patterns)
+    engine.generate_all_patterns(engine.state.players[0], all_patterns)
     print(f"生成的牌型数量: {len(all_patterns)}")
     
     # 测试分组
@@ -44,7 +44,7 @@ def test_detailed_issue():
     # 手动调用get_valid_pattern_groups中的逻辑
     player_hand = engine.state.players[0]
     all_patterns = []
-    engine._generate_all_patterns(player_hand, all_patterns)
+    engine.generate_all_patterns(player_hand, all_patterns)
     pattern_groups = engine.group_patterns_into_hands(player_hand, all_patterns)
     print(f"\n初始分组数量: {len(pattern_groups)}")
     

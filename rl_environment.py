@@ -37,15 +37,10 @@ class RLEnvironment:
         # 将动作索引转换为实际出牌
         valid_patterns = self.engine.get_valid_patterns(self.engine.state.current_player)
         current_player = self.engine.state.current_player
-        opponent_player = 1 - current_player
 
         # 添加动作有效性检查，防止无限循环
         if not valid_patterns and action != 0:
             action = 0  # 强制跳过
-
-        # 打印当前状态（仅在详细模式下）
-        if self.engine.state.last_pattern and self.verbose:
-            print(f"上一手牌: {self.engine.state.last_pattern}")
 
         # 处理无效动作
         if action >= len(valid_patterns):
@@ -56,22 +51,17 @@ class RLEnvironment:
 
     def _handle_invalid_action(self, valid_patterns, current_player):
         """处理无效动作"""
-        if self.verbose:
-            print(f"玩家 {current_player} 选择跳过 (动作无效，有效动作数: {len(valid_patterns)})")
-        
         success = self.engine.pass_turn(self.engine.state.current_player)
         reward = 0.0
-        
         if not success:
             # 不允许跳过，必须出牌
             if len(valid_patterns) > 0:
                 # 强制执行第一个有效动作
                 pattern = valid_patterns[0]
-                if self.verbose:
-                    print(f"玩家 {current_player} 被强制出牌: {pattern}")
                 success = self.engine.play_cards(self.engine.state.current_player, pattern.cards)
                 reward = self._calculate_reward(pattern) if success else -1.0
             else:
+                print(f"{self.engine.state.current_player} - {self.state.players[self.state.current_player]} - 跳过")
                 # 真的没有有效动作，强制跳过
                 self.engine.state.pass_count += 1
                 self.engine.state.current_player = 1 - self.engine.state.current_player
@@ -81,16 +71,12 @@ class RLEnvironment:
                 reward = -1.0
         else:
             reward = -0.1  # 给予小的负奖励
-
         return self._finalize_step(reward)
 
     def _handle_valid_action(self, valid_patterns, action, current_player):
         """处理有效动作"""
         pattern = valid_patterns[action]
-        
-        if self.verbose:
-            print(f"玩家 {current_player} 出牌: {pattern}")
-        
+
         # 检查要出的牌是否在玩家手牌中
         player_hand = self.engine.state.players[current_player]
         cards_in_hand = all(card in player_hand for card in pattern.cards)
@@ -123,21 +109,7 @@ class RLEnvironment:
 
     def _execute_play(self, pattern, current_player):
         """执行出牌操作"""
-        # 仅在详细模式下打印手牌信息
-        if self.verbose:
-            print(f"出牌前玩家 {current_player} 手牌: {sorted(self.engine.state.players[current_player])}")
-            print(f"尝试出牌: {pattern}")
-        
         success = self.engine.play_cards(self.engine.state.current_player, pattern.cards)
-        
-        if self.verbose:
-            if success:
-                print(f"出牌成功，出牌后玩家 {current_player} 手牌: {sorted(self.engine.state.players[current_player])}")
-            else:
-                print(f"出牌失败: {pattern}")
-                print(f"玩家 {current_player} 手牌: {sorted(self.engine.state.players[current_player])}")
-                print(f"尝试出的牌: {[str(card) for card in pattern.cards]}")
-        
         reward = self._calculate_reward(pattern) if success else -1.0
         return self._finalize_step(reward)
 
@@ -755,7 +727,7 @@ class CardGroupScorer:
         
         # 创建一个临时的牌型列表
         potential_patterns = []
-        engine._generate_all_patterns(remaining_cards, potential_patterns)
+        engine.generate_all_patterns(remaining_cards, potential_patterns)
         
         # 评估剩余牌型的质量
         total_potential = 0.0

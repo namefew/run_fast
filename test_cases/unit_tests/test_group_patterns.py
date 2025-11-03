@@ -29,7 +29,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertGreater(len(patterns), 0, "应该生成至少一个牌型")
         
         # 测试分组
@@ -55,7 +55,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertEqual(len(patterns), 2, "应该生成两个牌型（对子和单张）")
         
         # 测试分组
@@ -77,7 +77,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertGreater(len(patterns), 0, "应该生成至少一个牌型")
         
         # 应该包含一个顺子
@@ -100,7 +100,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertGreater(len(patterns), 0, "应该生成至少一个牌型")
         
         # 应该包含一个连对
@@ -131,7 +131,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertGreater(len(patterns), 0, "应该生成至少一个牌型")
         
         # 测试分组
@@ -161,7 +161,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertGreater(len(patterns), 0, "应该生成至少一个牌型")
         
         # 应该包含一个飞机
@@ -184,7 +184,7 @@ class TestGroupPatterns(unittest.TestCase):
         
         # 生成所有可能的牌型
         patterns = []
-        self.engine._generate_all_patterns(hand, patterns)
+        self.engine.generate_all_patterns(hand, patterns)
         self.assertGreater(len(patterns), 0, "应该生成至少一个牌型")
         
         # 应该包含一个炸弹

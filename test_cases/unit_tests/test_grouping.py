@@ -23,7 +23,7 @@ def test_grouping_issue():
     
     # 获取所有可能的牌型组合
     all_patterns = []
-    engine._generate_all_patterns(engine.state.players[0], all_patterns)
+    engine.generate_all_patterns(engine.state.players[0], all_patterns)
     print(f"生成的牌型数量: {len(all_patterns)}")
     
     # 尝试分组

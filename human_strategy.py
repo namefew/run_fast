@@ -53,7 +53,7 @@ class HumanStrategy(AIStrategy):
         remaining_cards = self.refine_remaining_cards(engine)
         opponent_possible_patterns = self.generate_all_patterns_from_cards(remaining_cards,  engine)
         all_groups = engine.get_valid_pattern_groups(self.player_id)
-        
+
         # 找到分数最大的分组
         best_group = None
         max_score = float('-inf')
@@ -82,6 +82,7 @@ class HumanStrategy(AIStrategy):
         from game import GameState
         temp_engine = GameEngine()
         temp_engine.state = GameState()
+
         temp_engine.state.players = [remaining_hand, []]  # 我们只关心玩家0的手牌
         
         # 获取所有可能的出牌分组
@@ -92,7 +93,7 @@ class HumanStrategy(AIStrategy):
             
         # 对每个分组计算得分，返回最高得分
         max_score = 0
-        for group in pattern_groups[:5]:  # 限制检查前5个分组以提高性能
+        for group in pattern_groups:  # 限制检查前5个分组以提高性能
             group_score = self.calculate_group_score(group, opponent_possible_patterns, engine)
             if group_score > max_score:
                 max_score = group_score
@@ -233,7 +234,7 @@ class HumanStrategy(AIStrategy):
         engine._generate_bomb_patterns(cards, patterns)
         engine._generate_straight_patterns(cards, patterns)
         engine._generate_double_straight_patterns(cards, patterns)
-        engine._generate_airplane_patterns(cards, patterns)
+        # engine._generate_airplane_patterns(cards, patterns)
         self._generate_three_with_two_patterns(cards, patterns) #不带牌
         self._generate_airplane_with_wings_patterns(cards, patterns) #不带牌
         return  patterns
@@ -282,13 +283,13 @@ class HumanStrategy(AIStrategy):
             # 如果序列长度至少为2，则生成飞机带翅膀
             if len(sequence) >= 2:
                 # 收集所有其他牌作为带牌候选
-                airplane_cards = []
-                for point in sequence:
-                    airplane_cards.extend(triples[point][:3])  # 每个点数选三张牌
-                # 使用所有可用的带牌
-                all_cards = airplane_cards
-                pattern = CardPattern(CardType.AIRPLANE_WITH_WINGS, all_cards, sequence[0])
-                patterns.append(pattern)
+                for i in range(2, len(sequence) + 1):
+                    straight_points = sequence[:i]
+                    straight_cards = []
+                    for point in straight_points:
+                        straight_cards.extend(point_cards[point][:3])  # 每个点数取两张牌
+                    pattern = CardPattern(CardType.AIRPLANE_WITH_WINGS, straight_cards, straight_points[0])
+                    patterns.append(pattern)
 
     def calculate_group_score(self, group:List[CardPattern], opponent_possible_patterns: List[CardPattern], engine: GameEngine):
         opponent_hand_size = len(engine.state.players[1 - self.player_id])
@@ -439,13 +440,12 @@ class HumanStrategy(AIStrategy):
         pattern_big_rate = {}
         for type, patterns in grouped_patterns.items():
             for pattern in patterns:
-                # 检查对手是否可能有能管住的牌
                 not_covered_possibility = self.not_covered_possibility(pattern, opponent_possible_patterns,engine)
                 pattern_big_rate[pattern]=not_covered_possibility
-
         bigest_count = sum([1 for pattern in best_pattern_group if pattern_big_rate[pattern]==1])
+
+        # 如果只有一种牌型对手可能能管住 优先出最大的牌(这样可以连续出牌，最后赢得比赛）
         if bigest_count >= len(best_pattern_group)-1:
-            # 如果只有一种牌型对手可能能管住 优先出最大的牌(这样可以连续出牌，最后赢得比赛）
             for pattern in best_pattern_group:
                 if pattern_big_rate[pattern] == 1:
                     return pattern
@@ -455,7 +455,6 @@ class HumanStrategy(AIStrategy):
         if opponent_hand_size==1:
             return max(pattern_big_rate, key=pattern_big_rate.get)
 
-        #尽量出那些自己有2手或以上最大牌的牌型
         type_counts = {}
         type_big_count = {}
         for pattern in best_pattern_group:
@@ -466,11 +465,18 @@ class HumanStrategy(AIStrategy):
             type_counts[pattern.type] += 1
             if pattern_big_rate[pattern] == 1:
                 type_big_count[pattern.type] += 1
-        #找出出现次数最多的牌型
+
+        # 如果正好有3手牌且其中一个是炸弹,返回第2大的牌
+        if len(best_pattern_group) == 3 and type_counts.get(CardType.BOMB, 0) >= 1:
+            # 按照被管住的概率从大到小排序
+            sorted_patterns = sorted(best_pattern_group, key=lambda p: pattern_big_rate[p], reverse=True)
+            return sorted_patterns[1]
+
+        #找出有2手以上最大牌的牌型
         most_big_type = max(type_big_count, key=type_big_count.get)
         if type_counts[most_big_type] > 1:
             if most_big_type==CardType.STRAIGHT:
-                #同花顺牌型时，如果数量一直，先出小排，再出大牌；如果数量不一致，先出大牌，再出小牌
+                #同花顺牌型时，如果数量一致，先出小排，再出大牌；如果数量不一致，先出大牌，再出小牌
                 # 检查所有顺子的长度是否一致
                 matching_patterns = [pattern for pattern in best_pattern_group if
                                      pattern.type == most_big_type]
@@ -487,12 +493,21 @@ class HumanStrategy(AIStrategy):
             return min(matching_patterns, key=lambda p: p.main_point)
 
 
-        maybe_bigest_count = sum([1 for pattern in best_pattern_group if pattern_big_rate[pattern]>=max(opponent_hand_size/16,0.5)])
-        if maybe_bigest_count>=len(grouped_patterns)-1:
+        maybe_bigest_count = sum([1 for pattern in best_pattern_group if pattern_big_rate[pattern]>=max(opponent_hand_size/16,0.8)])
+        if maybe_bigest_count>=len(best_pattern_group)-1:
             for pattern in best_pattern_group:
-                if pattern_big_rate[pattern]>=max(opponent_hand_size/16,0.5):
-                    return pattern
+                if pattern_big_rate[pattern]>=max(opponent_hand_size/16,0.8):
+                    if pattern.type != CardType.BOMB:
+                        return pattern
+
         # 如果没有牌是最大的，尽量先出得分最高的牌型中的 小牌
         #TODO
-        # 默认返回第一组中的第一个牌型
+        # 默认牌数最多的牌先出
+        if best_pattern_group[0].type == CardType.BOMB and len(best_pattern_group) > 1:
+            return best_pattern_group[1]
+
+        # 如果牌型数量超过5且数量最多的牌的主牌是K或A,则出第二手牌
+        if len(best_pattern_group)>5 and best_pattern_group[0].main_point>12:
+            return best_pattern_group[1]
+
         return best_pattern_group[0]

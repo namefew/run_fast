@@ -38,7 +38,7 @@ def test_ignore_suit():
     
     # 生成所有可能的牌型
     all_patterns = []
-    engine._generate_all_patterns(hand, all_patterns)
+    engine.generate_all_patterns(hand, all_patterns)
     print(f"生成的牌型数量: {len(all_patterns)}")
     
     # 显示一些生成的牌型
@@ -90,7 +90,7 @@ def test_problematic_hand():
     
     # 生成所有可能的牌型
     all_patterns = []
-    engine._generate_all_patterns(hand, all_patterns)
+    engine.generate_all_patterns(hand, all_patterns)
     print(f"生成的牌型数量: {len(all_patterns)}")
     
     # 测试分组

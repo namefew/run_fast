@@ -116,8 +116,8 @@ class GameEngine:
             self.state.scores[player_id] += 1
         
         # 切换到下一个玩家
+        print(f"{player_id} - {self.state.players[self.state.current_player]} - 出牌：{pattern.cards}")
         self.state.current_player = 1 - player_id
-        
         return True
 
     def pass_turn(self, player_id: int) -> bool:
@@ -184,7 +184,7 @@ class GameEngine:
         player_hand = self.state.players[player_id]
         
         # 生成所有可能的牌型组合
-        self._generate_all_patterns(player_hand, valid_patterns)
+        self.generate_all_patterns(player_hand, valid_patterns)
         
         # 如果不是首出且上家没有跳过，只保留能管住上一手牌的牌型
         if self.is_cover_play():
@@ -212,7 +212,7 @@ class GameEngine:
         
         # 生成所有可能的牌型组合
         all_patterns = []
-        self._generate_all_patterns(player_hand, all_patterns)
+        self.generate_all_patterns(player_hand, all_patterns)
         
         # 将牌型组合分组
         pattern_groups = self.group_patterns_into_hands(player_hand, all_patterns)
@@ -233,13 +233,8 @@ class GameEngine:
             # 重新按分组的size排序，短的在前
             pattern_groups.sort(key=len)
             
-            # 如果没有能管住上一手牌的完整分组，返回所有分组（允许玩家选择pass）
-            if not pattern_groups:
-                pattern_groups = self.group_patterns_into_hands(player_hand, all_patterns)
-                pattern_groups.sort(key=len)
-        
         # 限制返回的分组数量，避免过多分组导致性能问题
-        return pattern_groups[:100]  # 最多返回100个分组
+        return pattern_groups
 
     def group_patterns_into_hands(self, hand: List[Card], patterns: List[CardPattern]) -> List[List[CardPattern]]:
         """
@@ -325,7 +320,7 @@ class GameEngine:
         """获取玩家剩余手牌数"""
         return [len(self.state.players[0]), len(self.state.players[1])]
 
-    def _generate_all_patterns(self, hand: List[Card], patterns: List[CardPattern]):
+    def generate_all_patterns(self, hand: List[Card], patterns: List[CardPattern]):
         """生成所有可能的牌型组合"""
         # 优化：根据手牌数量决定生成哪些牌型
         hand_size = len(hand)
@@ -336,17 +331,17 @@ class GameEngine:
         self._generate_bomb_patterns(hand, patterns)
         
         # 生成四带三
-        if hand_size >= 4:
-            self._generate_four_with_three_patterns(hand, patterns)
+        # if hand_size >= 4:
+        #     self._generate_four_with_three_patterns(hand, patterns)
         
         # 生成飞机带翅膀
         if hand_size >= 7:
             self._generate_airplane_with_wings_patterns(hand, patterns)
         
         # 生成飞机
-        if hand_size >= 6:
-            self._generate_airplane_patterns(hand, patterns)
-        
+        # if hand_size >= 6:
+        #     self._generate_airplane_patterns(hand, patterns)
+
         # 生成顺子
         if hand_size >= 5:
             self._generate_straight_patterns(hand, patterns)
@@ -354,7 +349,7 @@ class GameEngine:
         # 生成连对
         if hand_size >= 4:
             self._generate_double_straight_patterns(hand, patterns)
-        
+
         # 生成三带二
         if hand_size >= 5:
             self._generate_three_with_two_patterns(hand, patterns)
@@ -420,8 +415,6 @@ class GameEngine:
                     patterns.append(pattern)
                     combo_count += 1
                     # 限制每个三同张最多生成20种带牌组合（增加数量以确保能找到合适的组合）
-                    if combo_count >= 20:
-                        break
 
             # 特殊规则：如果只有一张其他牌但这是最后一手牌，也可以打出（三带一）
             elif len(other_cards) == 1:
@@ -455,18 +448,20 @@ class GameEngine:
             
             # 如果序列长度至少为5，则生成顺子
             if len(sequence) >= 5:
-                # 检查序列中是否包含2（点数15），如果包含则不能构成顺子
+                # 检查序列中是否包含2（点数15），如果包含则从序列中移除
                 if 15 in sequence:
-                    continue
-                    
-                # 生成所有可能的顺子组合
-                for i in range(5, len(sequence) + 1):
-                    straight_points = sequence[:i]
-                    straight_cards = []
-                    for point in straight_points:
-                        straight_cards.append(point_cards[point])
-                    pattern = CardPattern(CardType.STRAIGHT, straight_cards, straight_points[0])
-                    patterns.append(pattern)
+                    sequence = [point for point in sequence if point != 15]
+                
+                # 如果移除2后序列长度仍然至少为5，则生成所有可能的顺子组合
+                if len(sequence) >= 5:
+                    # 生成所有可能的顺子组合
+                    for i in range(5, len(sequence) + 1):
+                        straight_points = sequence[:i]
+                        straight_cards = []
+                        for point in straight_points:
+                            straight_cards.append(point_cards[point])
+                        pattern = CardPattern(CardType.STRAIGHT, straight_cards, straight_points[0])
+                        patterns.append(pattern)
 
     def _generate_double_straight_patterns(self, hand: List[Card], patterns: List[CardPattern]):
         """生成连对牌型"""
@@ -481,7 +476,7 @@ class GameEngine:
         pair_points = [point for point, cards in point_cards.items() if len(cards) >= 2]
         pair_points.sort()
         
-        # 寻找连续的对子序列（至少3对）
+        # 寻找连续的对子序列（至少2对）
         for start in range(len(pair_points)):
             sequence = [pair_points[start]]
             for i in range(start + 1, len(pair_points)):
@@ -491,14 +486,10 @@ class GameEngine:
                 else:
                     break
             
-            # 如果序列长度至少为3，则生成连对
-            if len(sequence) >= 3:
-                # 检查序列中是否包含2（点数15），如果包含则不能构成连对
-                if 15 in sequence:
-                    continue
-                    
+            # 如果序列长度至少为2，则生成连对
+            if len(sequence) >= 2:
                 # 生成所有可能的连对组合
-                for i in range(3, len(sequence) + 1):
+                for i in range(2, len(sequence) + 1):
                     straight_points = sequence[:i]
                     straight_cards = []
                     for point in straight_points:

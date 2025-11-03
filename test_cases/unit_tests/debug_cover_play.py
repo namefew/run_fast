@@ -35,7 +35,7 @@ def test_cover_play_issue():
     
     # 手动检查所有分组
     all_patterns = []
-    engine._generate_all_patterns(engine.state.players[0], all_patterns)
+    engine.generate_all_patterns(engine.state.players[0], all_patterns)
     all_groups = engine.group_patterns_into_hands(engine.state.players[0], all_patterns)
     
     print(f"所有分组数量: {len(all_groups)}")

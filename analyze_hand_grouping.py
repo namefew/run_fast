@@ -65,8 +65,8 @@ def analyze_hand_grouping(hand_str):
     # 显示前几个分组
     max_score = 0
     best_pattern_group = None
-    print("\n前50个分组:")
-    for i, group in enumerate(pattern_groups[:50]):
+    print("\n前个分组:")
+    for i, group in enumerate(pattern_groups[:]):
         print(f"  分组 {i+1}:")
         print_group(group)
         score = strategy.calculate_group_score(group, opponent_patterns, engine)
@@ -85,5 +85,5 @@ def print_group( group):
 
 if __name__ == "__main__":
     # 分析指定的手牌
-    hand_str = "3, 3, 3, 7, 8, 8, 8, 9, 9, 9, J, J, Q, Q, A, 2"
+    hand_str = "3, 3, 3, 4, 5, 8, 8, 8, 9, 9, 9, J, J, A, A, A"
     analyze_hand_grouping(hand_str)

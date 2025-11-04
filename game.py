@@ -116,7 +116,7 @@ class GameEngine:
             self.state.scores[player_id] += 1
         
         # 切换到下一个玩家
-        print(f"{player_id} - {self.state.players[self.state.current_player]} - 出牌：{pattern.cards}")
+        # print(f"{player_id} - {self.state.players[self.state.current_player]} - 出牌：{pattern.cards}")
         self.state.current_player = 1 - player_id
         return True
 
@@ -217,24 +217,28 @@ class GameEngine:
         # 将牌型组合分组
         pattern_groups = self.group_patterns_into_hands(player_hand, all_patterns)
         
-        # 按分组的size排序，短的在前
-        pattern_groups.sort(key=len)
-        
         # 如果不是首出且上家没有跳过，只保留包含能管住上一手牌的牌型的分组
         if self.is_cover_play():
-            valid_groups = []
-            for group in pattern_groups:
-                # 检查组中是否有能管住上一手牌的牌型
-                can_beat = any(compare_patterns(pattern, self.state.last_pattern) for pattern in group)
-                if can_beat:
-                    valid_groups.append(group)
-            pattern_groups = valid_groups
+            last_pattern = self.state.last_pattern
+            # 预先计算能管住上一手牌的牌型集合，避免重复计算
+            valid_patterns = {pattern for pattern in all_patterns if compare_patterns(pattern, last_pattern)}
             
-            # 重新按分组的size排序，短的在前
-            pattern_groups.sort(key=len)
+            if valid_patterns:
+                valid_groups = []
+                for group in pattern_groups:
+                    # 检查组中是否有能管住上一手牌的牌型
+                    if any(pattern in valid_patterns for pattern in group):
+                        valid_groups.append(group)
+                pattern_groups = valid_groups
+            else:
+                # 如果没有能管住上一手牌的牌型，返回空列表
+                pattern_groups = []
+            
+        # 按分组的size排序，短的在前
+        pattern_groups.sort(key=len)
             
         # 限制返回的分组数量，避免过多分组导致性能问题
-        return pattern_groups
+        return pattern_groups[:100]  # 限制最多返回100个分组
 
     def group_patterns_into_hands(self, hand: List[Card], patterns: List[CardPattern]) -> List[List[CardPattern]]:
         """
@@ -258,14 +262,19 @@ class GameEngine:
         
         # 使用回溯算法将牌型分组
         groups = []
-        used_patterns = set()
+        used_patterns = [False] * len(patterns)  # 使用列表代替集合，提高访问速度
+        hand_size = len(hand)
         
-        def backtrack(current_group, used_cards):
+        def backtrack(current_group, used_cards_count, used_cards):
             # 如果所有牌都已使用，添加当前分组
-            if len(used_cards) == len(hand):
+            if used_cards_count == hand_size:
                 groups.append(current_group[:])
-                return len(groups) >= 300  # 限制最多100个分组
+                return len(groups) >= 100  # 限制最多100个分组
             
+            # 如果已经找到足够多的分组，提前结束
+            if len(groups) >= 100:
+                return True
+                
             # 找到第一个未使用的牌
             next_card = None
             for card in hand:
@@ -278,29 +287,38 @@ class GameEngine:
                 
             # 尝试包含该牌的每个牌型
             for pattern_idx in card_to_patterns[next_card]:
-                if pattern_idx in used_patterns:
+                if used_patterns[pattern_idx]:
                     continue
                     
                 pattern = patterns[pattern_idx]
+                pattern_cards = pattern.cards
+                pattern_card_count = len(pattern_cards)
+                
                 # 检查该牌型的所有牌是否都未使用
-                if all(card not in used_cards for card in pattern.cards):
+                can_use = True
+                for card in pattern_cards:
+                    if card in used_cards:
+                        can_use = False
+                        break
+                
+                if can_use:
                     # 添加该牌型到当前分组
                     current_group.append(pattern)
-                    used_patterns.add(pattern_idx)
-                    new_used_cards = used_cards.union(set(pattern.cards))
+                    used_patterns[pattern_idx] = True
+                    new_used_cards = used_cards.union(set(pattern_cards))
                     
                     # 递归处理
-                    if backtrack(current_group, new_used_cards):
+                    if backtrack(current_group, used_cards_count + pattern_card_count, new_used_cards):
                         return True
                         
                     # 回溯
                     current_group.pop()
-                    used_patterns.remove(pattern_idx)
+                    used_patterns[pattern_idx] = False
             
             return False
         
         # 开始回溯，限制最多生成100个分组
-        backtrack([], set())
+        backtrack([], 0, set())
         
         return groups
 
@@ -339,8 +357,8 @@ class GameEngine:
             self._generate_airplane_with_wings_patterns(hand, patterns)
         
         # 生成飞机
-        # if hand_size >= 6:
-        #     self._generate_airplane_patterns(hand, patterns)
+        if hand_size >= 6:
+            self._generate_airplane_patterns(hand, patterns)
 
         # 生成顺子
         if hand_size >= 5:
@@ -351,7 +369,7 @@ class GameEngine:
             self._generate_double_straight_patterns(hand, patterns)
 
         # 生成三带二
-        if hand_size >= 5:
+        if hand_size >= 3:
             self._generate_three_with_two_patterns(hand, patterns)
         
         # 生成对子

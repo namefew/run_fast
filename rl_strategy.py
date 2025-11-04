@@ -60,8 +60,8 @@ class DQNAIStrategy(AIStrategy):
         # 训练参数
         self.gamma = 0.95  # 折扣因子
         self.epsilon = 1.0  # 探索率
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.001
+        self.epsilon_decay = 0.9975
         self.learning_rate = lr
         self.tau = 0.001  # 软更新参数
         
@@ -310,15 +310,20 @@ def train_dqn_agent(episodes: int = 1000):
     
     scores = deque(maxlen=100)
     
+    # 用于记录训练过程的指标
+    wins = 0
+    total_steps = []
+    
     for episode in range(episodes):
         state = env.reset()
         total_reward = 0
         steps = 0
-        print(f"第 {episode+1}/{episodes} 开始 ...")
-        print(f"玩家0 - {env.engine.state.players[0]}")
-        print(f"玩家1 - {env.engine.state.players[1]}")
+        # print(f"第 {episode+1}/{episodes} 开始 ...")
+        # print(f"玩家0 - {env.engine.state.players[0]}")
+        # print(f"玩家1 - {env.engine.state.players[1]}")
+        
         # 添加调试计数器，防止无限循环
-        max_steps_per_episode = 50  # 设置合理的最大步数
+        max_steps_per_episode = 50  # 增加最大步数限制以适应完整游戏
         step_count = 0
         
         while not env.done and step_count < max_steps_per_episode:
@@ -432,6 +437,9 @@ def train_dqn_agent(episodes: int = 1000):
                 step_count += 1
             
             if done:
+                # 游戏结束，记录胜利情况
+                if env.engine.state.winner == 0:  # DQN玩家获胜
+                    wins += 1
                 break
         
         # 检查是否因为达到最大步数而退出循环
@@ -448,6 +456,7 @@ def train_dqn_agent(episodes: int = 1000):
             print(f"  玩家1手牌: {sorted(env.engine.state.players[1])}")
         
         scores.append(total_reward)
+        total_steps.append(step_count)
         
         # 更新目标网络（仅对DQN AI玩家）
         agent._update_target_network()
@@ -457,18 +466,21 @@ def train_dqn_agent(episodes: int = 1000):
             agent.epsilon *= agent.epsilon_decay
         
         # 打印进度（减少输出频率）
-        # if episode % 100 == 0:  # 每100轮输出一次
-        avg_score = np.mean(scores) if scores else 0
-        print(f"回合: {episode}, 平均得分: {avg_score:.4f}, Epsilon: {agent.epsilon:.4f}")
+        if episode % 100 == 0:  # 每100轮输出一次
+            avg_score = np.mean(scores) if scores else 0
+            win_rate = wins / max(episode, 1)  # 避免除零错误
+            avg_steps = np.mean(total_steps[-100:]) if total_steps else 0
+            print(f"回合: {episode}, 平均得分: {avg_score:.4f}, Epsilon: {agent.epsilon:.4f}, 胜率: {win_rate:.2%}, 平均步数: {avg_steps:.2f}")
 
         # 检查是否提前收敛
-        if episode > 1000 and len(scores) >= 100:  # 移除平均得分限制，避免过早收敛
-            avg_score = np.mean(scores)
-            if avg_score > 50:
-                print(f"提前收敛于第 {episode} 回合")
-                break
+        # if episode > 1000 and len(scores) >= 100:  # 移除平均得分限制，避免过早收敛
+        #     avg_score = np.mean(scores)
+        #     if avg_score > 50:
+        #         print(f"提前收敛于第 {episode} 回合")
+        #         break
     
     print("训练完成!")
+    print(f"最终胜率: {wins/episodes:.2%}")
     return agent
 
 
